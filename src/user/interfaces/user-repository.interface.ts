@@ -1,13 +1,24 @@
+export interface Role {
+  id: number;
+  name: string;
+  description: string;
+}
+
 export interface User {
   id: number;
   email: string;
   password: string;
-  createdAt: Date;
+  firstname: string;
+  lastname: string;
+  role: Role;
 }
 
 export interface CreateUserData {
   email: string;
   password: string;
+  firstname: string;
+  lastname: string;
+  role: Role;
 }
 
 export interface IUserRepository {

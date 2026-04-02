@@ -1,2 +1,0 @@
-ALTER TABLE "Course"
-ADD COLUMN "is_common_area" BOOLEAN NOT NULL DEFAULT false;

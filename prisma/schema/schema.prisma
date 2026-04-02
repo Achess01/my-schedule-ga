@@ -5,7 +5,7 @@
 
 generator client {
   provider     = "prisma-client"
-  output   = "../../src/generated/prisma"
+  output       = "../../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -16,6 +16,17 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  firstname String
+  lastname  String
   password  String
+  role      Role     @relation(fields: [id], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  User        User[]
 }
