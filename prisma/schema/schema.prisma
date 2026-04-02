@@ -15,18 +15,73 @@ datasource db {
 
 model User {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
-  firstname String
-  lastname  String
-  password  String
-  role      Role     @relation(fields: [id], references: [id])
+  email     String   @unique @db.VarChar(150)
+  firstname String   @db.VarChar(100)
+  lastname  String   @db.VarChar(100)
+  password  String   @db.VarChar(100)
+  role      Role     @relation(fields: [roleId], references: [id])
+  roleId    Int
   createdAt DateTime @default(now())
 }
 
 model Role {
   id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String
+  name        String   @unique @db.VarChar(100)
+  description String   @db.VarChar(255)
   createdAt   DateTime @default(now())
   User        User[]
+}
+
+model Career {
+  careerId  Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now())
+  Pensum    Pensum[]
+}
+
+model Course {
+  courseCode     Int            @id @default(autoincrement())
+  name           String         @unique @db.VarChar(255)
+  defaultCredits Int
+  PensumCourse   PensumCourse[]
+}
+
+model StudyArea {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique @db.VarChar(100)
+  description  String         @db.VarChar(255)
+  pensumCourse PensumCourse[]
+}
+
+model Pensum {
+  pensumId      Int            @id @default(autoincrement())
+  name          String         @unique @db.VarChar(100)
+  creditsNeeded Int            @default(0)
+  career        Career         @relation(fields: [pensumId], references: [careerId])
+  createdAt     DateTime       @default(now())
+  PensumCourse  PensumCourse[]
+}
+
+model PensumCourse {
+  pensumCourseId Int                        @id @default(autoincrement())
+  pensum         Pensum                     @relation(fields: [pensumId], references: [pensumId])
+  pensumId       Int
+  course         Course                     @relation(fields: [courseCode], references: [courseCode])
+  courseCode     Int
+  studyArea      StudyArea                  @relation(fields: [studyAreaId], references: [id])
+  studyAreaId    Int
+  credits        Int
+  requiredCreds  Int
+  isMandatory    Boolean
+  prerequisites  PensumCoursePrerequisite[] @relation("PensumCoursePrerequisiteCourse")
+  postrequisites PensumCoursePrerequisite[] @relation("PensumCoursePrerequisitePrerequisite")
+}
+
+model PensumCoursePrerequisite {
+  pensumCourse   PensumCourse @relation("PensumCoursePrerequisiteCourse", fields: [pensumCourseId], references: [pensumCourseId])
+  pensumCourseId Int
+  prerequisite   PensumCourse @relation("PensumCoursePrerequisitePrerequisite", fields: [prerequisiteId], references: [pensumCourseId])
+  prerequisiteId Int
+
+  @@id([pensumCourseId, prerequisiteId])
 }
