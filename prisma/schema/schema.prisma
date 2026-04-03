@@ -57,7 +57,8 @@ model Pensum {
   pensumId      Int            @id @default(autoincrement())
   name          String         @unique @db.VarChar(100)
   creditsNeeded Int            @default(0)
-  career        Career         @relation(fields: [pensumId], references: [careerId])
+  career        Career         @relation(fields: [careerId], references: [careerId])
+  careerId      Int
   createdAt     DateTime       @default(now())
   PensumCourse  PensumCourse[]
 }

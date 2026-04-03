@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CareerModule } from './career/career.module';
 import { CourseModule } from './course/course.module';
 import { StudyAreaModule } from './study-area/study-area.module';
+import { PensumModule } from './pensum/pensum.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { StudyAreaModule } from './study-area/study-area.module';
     CareerModule,
     CourseModule,
     StudyAreaModule,
+    PensumModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -58,6 +58,7 @@ export class StudyAreaService {
     return studyArea;
   }
 
+  // TODO: Add pensum formato to display on frontend (semesters and study areas)
   async findOne(id: number) {
     const studyArea = await this.prismaService.studyArea.findUnique({
       where: { id },
