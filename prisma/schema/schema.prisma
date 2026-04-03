@@ -80,9 +80,9 @@ model PensumCourse {
 }
 
 model PensumCoursePrerequisite {
-  pensumCourse   PensumCourse @relation("PensumCoursePrerequisiteCourse", fields: [pensumCourseId], references: [pensumCourseId])
+  pensumCourse   PensumCourse @relation("PensumCoursePrerequisiteCourse", fields: [pensumCourseId], references: [pensumCourseId], onDelete: Cascade)
   pensumCourseId Int
-  prerequisite   PensumCourse @relation("PensumCoursePrerequisitePrerequisite", fields: [prerequisiteId], references: [pensumCourseId])
+  prerequisite   PensumCourse @relation("PensumCoursePrerequisitePrerequisite", fields: [prerequisiteId], references: [pensumCourseId], onDelete: Cascade)
   prerequisiteId Int
 
   @@id([pensumCourseId, prerequisiteId])
