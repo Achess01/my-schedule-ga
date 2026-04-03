@@ -28,7 +28,6 @@ const STATUS_TITLES: Record<number, string> = {
 };
 
 interface ValidationError {
-  field: string;
   message: string;
 }
 
@@ -81,7 +80,7 @@ export class ProblemDetailFilter implements ExceptionFilter {
     ) {
       const errors = this.extractValidationErrors(exception);
       if (errors.length > 0) {
-        problem.detail = 'Validation failed';
+        problem.detail = 'Verifique que los campos sean correctos';
         problem.errors = errors;
       }
     }
@@ -145,10 +144,9 @@ export class ProblemDetailFilter implements ExceptionFilter {
   private parseValidationMessage(message: string): ValidationError {
     const firstSpace = message.indexOf(' ');
     if (firstSpace === -1) {
-      return { field: 'unknown', message };
+      return { message };
     }
     return {
-      field: message.slice(0, firstSpace),
       message,
     };
   }

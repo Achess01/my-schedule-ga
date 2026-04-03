@@ -35,7 +35,7 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<{ access_token: string }> {
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException('Ya existe un usuario con este correo');
     }
 
     const role = await this.prismaService.role.findUnique({
