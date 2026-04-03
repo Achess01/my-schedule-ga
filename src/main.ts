@@ -9,8 +9,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()
-    .setTitle('Class Schedule API')
-    .setDescription('API for managing class schedules')
+    .setTitle('My Schedule API')
+    .setDescription('API for managing personal schedules')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
