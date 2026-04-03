@@ -40,7 +40,7 @@ model Career {
 }
 
 model Course {
-  courseCode     Int            @id @default(autoincrement())
+  courseCode     Int            @id
   name           String         @unique @db.VarChar(255)
   defaultCredits Int
   PensumCourse   PensumCourse[]

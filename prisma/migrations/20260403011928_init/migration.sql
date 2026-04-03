@@ -32,7 +32,7 @@ CREATE TABLE "Career" (
 
 -- CreateTable
 CREATE TABLE "Course" (
-    "courseCode" SERIAL NOT NULL,
+    "courseCode" INTEGER NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "defaultCredits" INTEGER NOT NULL,
 
