@@ -72,6 +72,24 @@ export class PensumCourseService {
         course: true,
         pensum: true,
         studyArea: true,
+        prerequisites: {
+          include: {
+            prerequisite: {
+              include: {
+                course: true,
+              },
+            },
+          },
+        },
+        postrequisites: {
+          include: {
+            pensumCourse: {
+              include: {
+                course: true,
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -84,8 +102,24 @@ export class PensumCourseService {
         course: true,
         pensum: true,
         studyArea: true,
-        prerequisites: true,
-        postrequisites: true,
+        prerequisites: {
+          include: {
+            prerequisite: {
+              include: {
+                course: true,
+              },
+            },
+          },
+        },
+        postrequisites: {
+          include: {
+            pensumCourse: {
+              include: {
+                course: true,
+              },
+            },
+          },
+        },
       },
     });
 
