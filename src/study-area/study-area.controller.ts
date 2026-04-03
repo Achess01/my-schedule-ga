@@ -23,6 +23,8 @@ import { StudyAreaService } from './study-area.service';
 import { CreateStudyAreaDto } from './dto/create-study-area.dto';
 import { UpdateStudyAreaDto } from './dto/update-study-area.dto';
 import { FilterStudyAreaDto } from './dto/filter-study-area.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @ApiTags('study-area')
 @ApiBearerAuth()
@@ -30,12 +32,13 @@ import { FilterStudyAreaDto } from './dto/filter-study-area.dto';
 export class StudyAreaController {
   constructor(private readonly studyAreaService: StudyAreaService) {}
 
-  @ApiOperation({ summary: 'Crear area de estudio' })
+  @ApiOperation({ summary: 'Crear area de estudio', description: 'SOLO ADMIN' })
   @ApiCreatedResponse({ description: 'Área de estudio creada exitosamente' })
   @ApiConflictResponse({
     description: 'Ya existe un area de estudio con ese nombre',
   })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   create(@Body() createStudyAreaDto: CreateStudyAreaDto) {
     return this.studyAreaService.create(createStudyAreaDto);
@@ -62,13 +65,17 @@ export class StudyAreaController {
     return this.studyAreaService.findOne(+id);
   }
 
-  @ApiOperation({ summary: 'Actualizar área de estudio' })
+  @ApiOperation({
+    summary: 'Actualizar área de estudio',
+    description: 'SOLO ADMIN',
+  })
   @ApiOkResponse({ description: 'Área de estudio actualizada exitosamente' })
   @ApiNotFoundResponse({ description: 'Área de estudio no encontrada' })
   @ApiConflictResponse({
     description: 'Ya existe un área de estudio con ese nombre',
   })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -77,10 +84,14 @@ export class StudyAreaController {
     return this.studyAreaService.update(+id, updateStudyAreaDto);
   }
 
-  @ApiOperation({ summary: 'Eliminar área de estudio' })
+  @ApiOperation({
+    summary: 'Eliminar área de estudio',
+    description: 'SOLO ADMIN',
+  })
   @ApiOkResponse({ description: 'Área de estudio eliminada exitosamente' })
   @ApiNotFoundResponse({ description: 'Área de estudio no encontrada' })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.studyAreaService.remove(+id);

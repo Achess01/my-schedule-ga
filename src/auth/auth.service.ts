@@ -19,6 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export interface JwtPayload {
   sub: number;
   email: string;
+  role: string;
 }
 
 @Injectable()
@@ -55,7 +56,11 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    const payload: JwtPayload = { sub: user.id, email: user.email };
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role.name,
+    };
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
@@ -73,7 +78,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload: JwtPayload = { sub: user.id, email: user.email };
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role.name,
+    };
     return {
       access_token: await this.jwtService.signAsync(payload),
       user: {

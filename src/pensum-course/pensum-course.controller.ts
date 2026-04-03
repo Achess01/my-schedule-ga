@@ -23,6 +23,8 @@ import { PensumCourseService } from './pensum-course.service';
 import { CreatePensumCourseDto } from './dto/create-pensum-course.dto';
 import { UpdatePensumCourseDto } from './dto/update-pensum-course.dto';
 import { FilterPensumCourseDto } from './dto/filter-pensum-course.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @ApiTags('pensum-course')
 @ApiBearerAuth()
@@ -30,7 +32,10 @@ import { FilterPensumCourseDto } from './dto/filter-pensum-course.dto';
 export class PensumCourseController {
   constructor(private readonly pensumCourseService: PensumCourseService) {}
 
-  @ApiOperation({ summary: 'Crear relacion pensum-curso' })
+  @ApiOperation({
+    summary: 'Crear relacion pensum-curso',
+    description: 'SOLO ADMIN',
+  })
   @ApiCreatedResponse({
     description: 'Relacion pensum-curso creada exitosamente',
   })
@@ -40,7 +45,8 @@ export class PensumCourseController {
   @ApiNotFoundResponse({
     description: 'Pensum, curso o area de estudio no encontrados',
   })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   create(@Body() createPensumCourseDto: CreatePensumCourseDto) {
     return this.pensumCourseService.create(createPensumCourseDto);
@@ -68,7 +74,10 @@ export class PensumCourseController {
     return this.pensumCourseService.findOne(+id);
   }
 
-  @ApiOperation({ summary: 'Actualizar relacion pensum-curso' })
+  @ApiOperation({
+    summary: 'Actualizar relacion pensum-curso',
+    description: 'SOLO ADMIN',
+  })
   @ApiOkResponse({
     description: 'Relacion pensum-curso actualizada exitosamente',
   })
@@ -79,7 +88,8 @@ export class PensumCourseController {
   @ApiConflictResponse({
     description: 'Ya existe una relacion pensum-curso para ese pensum y curso',
   })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -88,12 +98,16 @@ export class PensumCourseController {
     return this.pensumCourseService.update(+id, updatePensumCourseDto);
   }
 
-  @ApiOperation({ summary: 'Eliminar relacion pensum-curso' })
+  @ApiOperation({
+    summary: 'Eliminar relacion pensum-curso',
+    description: 'SOLO ADMIN',
+  })
   @ApiOkResponse({
     description: 'Relacion pensum-curso eliminada exitosamente',
   })
   @ApiNotFoundResponse({ description: 'Relacion pensum-curso no encontrada' })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pensumCourseService.remove(+id);

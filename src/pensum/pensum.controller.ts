@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiForbiddenResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -18,7 +19,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { PensumService } from './pensum.service';
 import { CreatePensumDto } from './dto/create-pensum.dto';
 import { UpdatePensumDto } from './dto/update-pensum.dto';
@@ -30,11 +33,13 @@ import { FilterPensumDto } from './dto/filter-pensum.dto';
 export class PensumController {
   constructor(private readonly pensumService: PensumService) {}
 
-  @ApiOperation({ summary: 'Crear pensum' })
+  @ApiOperation({ summary: 'Crear pensum', description: 'SOLO ADMIN' })
   @ApiCreatedResponse({ description: 'Pensum creado exitósamente' })
   @ApiConflictResponse({ description: 'Ya existe un pensum con ese nombre' })
   @ApiNotFoundResponse({ description: 'Carrera no encontrada' })
-  @UseGuards(JwtAuthGuard)
+  @ApiForbiddenResponse({ description: 'Solo ADMIN puede crear pensums' })
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   create(@Body() createPensumDto: CreatePensumDto) {
     return this.pensumService.create(createPensumDto);
@@ -61,20 +66,22 @@ export class PensumController {
     return this.pensumService.findOne(+id);
   }
 
-  @ApiOperation({ summary: 'Actualizar pensum' })
+  @ApiOperation({ summary: 'Actualizar pensum', description: 'SOLO ADMIN' })
   @ApiOkResponse({ description: 'Pensum actualizado exitosamente' })
   @ApiNotFoundResponse({ description: 'Pensum o carrera no encontrados' })
   @ApiConflictResponse({ description: 'Ya existe un pensum con ese nombre' })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePensumDto: UpdatePensumDto) {
     return this.pensumService.update(+id, updatePensumDto);
   }
 
-  @ApiOperation({ summary: 'Eliminar pensum' })
+  @ApiOperation({ summary: 'Eliminar pensum', description: 'SOLO ADMIN' })
   @ApiOkResponse({ description: 'Pensum eliminado exitosamente' })
   @ApiNotFoundResponse({ description: 'Pensum no encontrado' })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pensumService.remove(+id);

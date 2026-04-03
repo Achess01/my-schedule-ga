@@ -18,6 +18,8 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PensumCoursePrerequisiteService } from './pensum-course-prerequisite.service';
 import { CreatePensumCoursePrerequisiteDto } from './dto/create-pensum-course-prerequisite.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @ApiTags('pensum-course-prerequisite')
 @ApiBearerAuth()
@@ -27,7 +29,10 @@ export class PensumCoursePrerequisiteController {
     private readonly pensumCoursePrerequisiteService: PensumCoursePrerequisiteService,
   ) {}
 
-  @ApiOperation({ summary: 'Crear relacion de prerrequisito' })
+  @ApiOperation({
+    summary: 'Crear relacion de prerrequisito',
+    description: 'SOLO ADMIN',
+  })
   @ApiCreatedResponse({
     description: 'Relacion de prerrequisito creada exitosamente',
   })
@@ -36,7 +41,8 @@ export class PensumCoursePrerequisiteController {
     description:
       'Relacion invalida por duplicidad, reciprocidad, auto-referencia o regla de semestre',
   })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   create(
     @Body()
@@ -47,14 +53,18 @@ export class PensumCoursePrerequisiteController {
     );
   }
 
-  @ApiOperation({ summary: 'Eliminar relacion de prerrequisito' })
+  @ApiOperation({
+    summary: 'Eliminar relacion de prerrequisito',
+    description: 'SOLO ADMIN',
+  })
   @ApiOkResponse({
     description: 'Relacion de prerrequisito eliminada exitosamente',
   })
   @ApiNotFoundResponse({
     description: 'Relacion de prerrequisito no encontrada',
   })
-  @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':pensumCourseId/:prerequisiteId')
   remove(
     @Param('pensumCourseId') pensumCourseId: string,
