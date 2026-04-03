@@ -9,6 +9,7 @@ import { StudyAreaModule } from './study-area/study-area.module';
 import { PensumModule } from './pensum/pensum.module';
 import { PensumCourseModule } from './pensum-course/pensum-course.module';
 import { PensumCoursePrerequisiteModule } from './pensum-course-prerequisite/pensum-course-prerequisite.module';
+import { RoleModule } from './role/role.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PensumCoursePrerequisiteModule } from './pensum-course-prerequisite/pen
     PensumModule,
     PensumCourseModule,
     PensumCoursePrerequisiteModule,
+    RoleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
