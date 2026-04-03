@@ -75,6 +75,7 @@ model PensumCourse {
   isMandatory    Boolean
   prerequisites  PensumCoursePrerequisite[] @relation("PensumCoursePrerequisiteCourse")
   postrequisites PensumCoursePrerequisite[] @relation("PensumCoursePrerequisitePrerequisite")
+  semester       Int                        @default(1)
 }
 
 model PensumCoursePrerequisite {
