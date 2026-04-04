@@ -47,6 +47,52 @@ export class AuthService {
       throw new NotFoundException(`Role con el id ${dto.roleId} no encontrado`);
     }
 
+    if (role.name === 'STUDENT' && (!dto.studentId || !dto.entryDate)) {
+      throw new ConflictException(
+        'studentId y entryDate son requeridos para usuarios con rol STUDENT',
+      );
+    }
+
+    let studentId: number | undefined;
+
+    if (role.name === 'STUDENT' && dto.studentId && dto.entryDate) {
+      const existingStudent = await this.prismaService.student.findUnique({
+        where: { studentId: dto.studentId },
+      });
+
+      const userWithStudent = await this.prismaService.user.findUnique({
+        where: { studentId: dto.studentId },
+      });
+
+      if (userWithStudent) {
+        throw new ConflictException(
+          'Ya existe un usuario asociado a este estudiante',
+        );
+      }
+
+      if (existingStudent) {
+        await this.prismaService.student.update({
+          where: { studentId: dto.studentId },
+          data: {
+            firstname: dto.firstname,
+            lastname: dto.lastname,
+            entryDate: new Date(dto.entryDate),
+          },
+        });
+      } else {
+        await this.prismaService.student.create({
+          data: {
+            studentId: dto.studentId,
+            firstname: dto.firstname,
+            lastname: dto.lastname,
+            entryDate: new Date(dto.entryDate),
+          },
+        });
+      }
+
+      studentId = dto.studentId;
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
     const user = await this.userRepository.create({
       firstname: dto.firstname,
@@ -54,6 +100,7 @@ export class AuthService {
       role: role,
       email: dto.email,
       password: hashedPassword,
+      ...(studentId !== undefined ? { studentId } : {}),
     });
 
     const payload: JwtPayload = {
@@ -91,6 +138,7 @@ export class AuthService {
         firstname: user.firstname,
         lastname: user.lastname,
         role: user.role,
+        student: user.student,
       },
     };
   }

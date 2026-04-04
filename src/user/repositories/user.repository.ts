@@ -11,26 +11,38 @@ export class PrismaUserRepository implements IUserRepository {
   constructor(private readonly prismaService: PrismaService) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prismaService.user.findUnique({
+    const user = await this.prismaService.user.findUnique({
       where: { email },
-      include: { role: true },
+      include: { role: true, student: true },
     });
+
+    return user as User | null;
   }
 
   async findById(id: number): Promise<User | null> {
-    return this.prismaService.user.findUnique({
+    const user = await this.prismaService.user.findUnique({
       where: { id },
-      include: { role: true },
+      include: { role: true, student: true },
     });
+
+    return user as User | null;
   }
 
   async create(data: CreateUserData): Promise<User> {
-    return this.prismaService.user.create({
+    const user = await this.prismaService.user.create({
       data: {
-        ...data,
+        email: data.email,
+        password: data.password,
+        firstname: data.firstname,
+        lastname: data.lastname,
         role: { connect: { id: data.role.id } },
+        ...(data.studentId !== undefined
+          ? { student: { connect: { studentId: data.studentId } } }
+          : {}),
       },
-      include: { role: true },
+      include: { role: true, student: true },
     });
+
+    return user as User;
   }
 }

@@ -11,6 +11,13 @@ export interface User {
   firstname: string;
   lastname: string;
   role: Role;
+  studentId?: number | null;
+  student?: {
+    studentId: number;
+    entryDate: Date;
+    firstname: string;
+    lastname: string;
+  } | null;
 }
 
 export interface CreateUserData {
@@ -19,6 +26,7 @@ export interface CreateUserData {
   firstname: string;
   lastname: string;
   role: Role;
+  studentId?: number;
 }
 
 export interface IUserRepository {

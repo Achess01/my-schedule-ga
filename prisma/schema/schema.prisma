@@ -22,6 +22,8 @@ model User {
   role      Role     @relation(fields: [roleId], references: [id])
   roleId    Int
   createdAt DateTime @default(now())
+  student   Student? @relation(fields: [studentId], references: [studentId])
+  studentId Int?     @unique
 }
 
 model Role {
@@ -54,13 +56,14 @@ model StudyArea {
 }
 
 model Pensum {
-  pensumId      Int            @id @default(autoincrement())
-  name          String         @unique @db.VarChar(100)
-  creditsNeeded Int            @default(0)
-  career        Career         @relation(fields: [careerId], references: [careerId])
+  pensumId      Int             @id @default(autoincrement())
+  name          String          @unique @db.VarChar(100)
+  creditsNeeded Int             @default(0)
+  career        Career          @relation(fields: [careerId], references: [careerId])
   careerId      Int
-  createdAt     DateTime       @default(now())
+  createdAt     DateTime        @default(now())
   PensumCourse  PensumCourse[]
+  StudentPensum StudentPensum[]
 }
 
 model PensumCourse {
@@ -77,6 +80,7 @@ model PensumCourse {
   prerequisites  PensumCoursePrerequisite[] @relation("PensumCoursePrerequisiteCourse")
   postrequisites PensumCoursePrerequisite[] @relation("PensumCoursePrerequisitePrerequisite")
   semester       Int                        @default(1)
+  StudentGrade   StudentGrade[]
 }
 
 model PensumCoursePrerequisite {
@@ -86,4 +90,45 @@ model PensumCoursePrerequisite {
   prerequisiteId Int
 
   @@id([pensumCourseId, prerequisiteId])
+}
+
+enum GradeType {
+  FIRST_SEMESTER     @map("Primer Semestre")
+  SECOND_SEMESTER    @map("Segundo Semestre")
+  VACATIONS_JUNE     @map("EDV Junio")
+  VACATIONS_DECEMBER @map("EDV Diciembre")
+}
+
+model Student {
+  studentId     Int             @id
+  user          User?
+  entryDate     DateTime        @db.Date
+  firstname     String          @db.VarChar(100)
+  lastname      String          @db.VarChar(100)
+  createdAt     DateTime        @default(now())
+  StudentPensum StudentPensum[]
+}
+
+model StudentPensum {
+  studentPensumId Int            @id @default(autoincrement())
+  student         Student        @relation(fields: [studentId], references: [studentId])
+  studentId       Int
+  pensum          Pensum         @relation(fields: [pensumId], references: [pensumId])
+  pensumId        Int
+  createdAt       DateTime       @default(now())
+  StudentGrade    StudentGrade[]
+
+  @@unique([studentId, pensumId])
+}
+
+model StudentGrade {
+  studentGradeId  Int           @id @default(autoincrement())
+  studentPensum   StudentPensum @relation(fields: [studentPensumId], references: [studentPensumId])
+  studentPensumId Int
+  pensumCourse    PensumCourse  @relation(fields: [pensumCourseId], references: [pensumCourseId])
+  pensumCourseId  Int
+  isApproved      Boolean
+  gradeType       GradeType
+  grade           Int
+  createdAt       DateTime      @default(now())
 }

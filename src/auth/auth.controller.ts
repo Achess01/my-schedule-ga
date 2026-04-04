@@ -4,12 +4,17 @@ import { AuthService, JwtPayload } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiOperation({
+    summary: 'Registrar un nuevo usuario',
+    description:
+      'Si el ROLE es 2 (STUDENT), entonces los campos studentId (carnet) y entryDate son obligatorios',
+  })
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
