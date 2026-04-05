@@ -57,6 +57,9 @@ export class PensumService {
 
     return this.prismaService.pensum.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
+      include: {
+        career: true,
+      },
     });
   }
 
@@ -75,6 +78,9 @@ export class PensumService {
   async findOne(id: number) {
     const pensum = await this.prismaService.pensum.findUnique({
       where: { pensumId: id },
+      include: {
+        career: true,
+      },
     });
 
     if (!pensum) {

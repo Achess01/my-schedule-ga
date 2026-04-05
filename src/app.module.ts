@@ -11,6 +11,7 @@ import { PensumCourseModule } from './pensum-course/pensum-course.module';
 import { PensumCoursePrerequisiteModule } from './pensum-course-prerequisite/pensum-course-prerequisite.module';
 import { RoleModule } from './role/role.module';
 import { StudentModule } from './student/student.module';
+import { StudentPensumModule } from './student-pensum/student-pensum.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { StudentModule } from './student/student.module';
     PensumCoursePrerequisiteModule,
     RoleModule,
     StudentModule,
+    StudentPensumModule,
   ],
   controllers: [AppController],
   providers: [AppService],

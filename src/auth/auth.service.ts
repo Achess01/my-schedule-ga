@@ -20,6 +20,7 @@ export interface JwtPayload {
   sub: number;
   email: string;
   role: string;
+  studentId?: number;
 }
 
 @Injectable()
@@ -103,12 +104,7 @@ export class AuthService {
       ...(studentId !== undefined ? { studentId } : {}),
     });
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role.name,
-    };
-    return { access_token: await this.jwtService.signAsync(payload) };
+    return { access_token: await this.generateToken(user) };
   }
 
   async login(dto: LoginDto): Promise<{
@@ -125,13 +121,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role.name,
-    };
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      access_token: await this.generateToken(user),
       user: {
         id: user.id,
         email: user.email,
@@ -153,5 +144,16 @@ export class AuthService {
     delete profile.password;
 
     return profile;
+  }
+
+  async generateToken(user: User) {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role.name,
+      ...(user.studentId ? { studentId: user.studentId } : {}),
+    };
+
+    return this.jwtService.signAsync(payload);
   }
 }
