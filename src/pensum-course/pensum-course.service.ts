@@ -94,7 +94,6 @@ export class PensumCourseService {
     });
   }
 
-  // TODO: Check how to return the pensumCourse in pre and post requisites
   async findOne(id: number) {
     const pensumCourse = await this.prismaService.pensumCourse.findUnique({
       where: { pensumCourseId: id },
