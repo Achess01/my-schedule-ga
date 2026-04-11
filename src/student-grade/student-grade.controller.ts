@@ -64,6 +64,7 @@ export class StudentGradeController {
       {
         studentId: filter.studentId,
         pensumId: filter.pensumId,
+        isApproved: filter.isApproved,
       },
       user,
     );

@@ -13,6 +13,7 @@ import { RoleModule } from './role/role.module';
 import { StudentModule } from './student/student.module';
 import { StudentPensumModule } from './student-pensum/student-pensum.module';
 import { StudentGradeModule } from './student-grade/student-grade.module';
+import { ClassSchedulesModule } from './class-schedules/class-schedules.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { StudentGradeModule } from './student-grade/student-grade.module';
     StudentModule,
     StudentPensumModule,
     StudentGradeModule,
+    ClassSchedulesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

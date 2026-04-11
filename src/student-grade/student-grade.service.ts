@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 interface FindAllStudentGradeFilters {
   studentId?: number;
   pensumId?: number;
+  isApproved?: boolean;
 }
 
 const SEMESTER_TYPES: GradeType[] = [
@@ -75,6 +76,10 @@ export class StudentGradeService {
 
     if (filters.pensumId !== undefined) {
       studentPensumFilter.pensumId = filters.pensumId;
+    }
+
+    if (filters.isApproved !== undefined) {
+      where.isApproved = filters.isApproved;
     }
 
     if (user.role === 'STUDENT') {

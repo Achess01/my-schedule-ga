@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { ProblemDetailFilter } from './common/errors/problem-detail.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { BigIntSerializerInterceptor } from './common/interceptors/bigint-serializer.interceptor';
+import { PORT } from './constants';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -28,6 +29,6 @@ async function bootstrap() {
   app.enableCors({
     origin: '*',
   });
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(PORT);
 }
 bootstrap();

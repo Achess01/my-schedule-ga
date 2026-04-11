@@ -63,3 +63,6 @@ src/generated/prisma
 
 schedule-view.md
 schedule-view.html
+
+response-find-all.json
+response-find-one.json
