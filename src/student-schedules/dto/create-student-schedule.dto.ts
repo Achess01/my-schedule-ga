@@ -1,8 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsInt, Min } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsInt, IsString, Min } from 'class-validator';
 
 export class CreateStudentScheduleDto {
+  @ApiProperty()
+  @IsString({ message: 'El nombre del horario debe ser un texto' })
+  name: string;
+
   @ApiProperty()
   @Type(() => Number)
   @IsInt({ message: 'El id de horario debe ser un numero entero' })

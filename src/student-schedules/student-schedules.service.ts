@@ -1,15 +1,20 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Prisma } from '../generated/prisma/client';
 import type { JwtPayload } from '../auth/auth.service';
 import type { GeneratedScheduleItem } from '../class-schedules/entities/class-schedule.entity';
 import { ClassSchedulesService } from '../class-schedules/class-schedules.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildSlotCatalog } from '../utils/build-slot-catalog';
 import { CreateStudentScheduleDto } from './dto/create-student-schedule.dto';
+import { FilterStudentScheduleDto } from './dto/filter-student-schedule.dto';
 import type {
+  StoredStudentSchedule,
   StudentScheduleAlternative,
   StudentScheduleCourseSelection,
   StudentScheduleCreateResponse,
@@ -46,6 +51,11 @@ interface ScheduleCandidate {
   gapCount: number;
   mandatoryCoursesCount: number;
   postrequisitesTotal: number;
+}
+
+interface PersistableScheduleResult {
+  isBest: boolean;
+  alternative: StudentScheduleAlternative;
 }
 
 const GA_POPULATION_SIZE = 120;
@@ -100,11 +110,11 @@ export class StudentSchedulesService {
       createStudentScheduleDto.scheduleId,
     );
 
-    const items = generatedSchedule.items.filter(
-      (i) => i.assignmentStatus === 'ASSIGNED',
+    const assignedItems = generatedSchedule.items.filter(
+      (item) => item.assignmentStatus === 'ASSIGNED',
     );
 
-    this.validateCoursesAreInSchedule(uniqueCourseCodes, items);
+    this.validateCoursesAreInSchedule(uniqueCourseCodes, assignedItems);
 
     const pensumCourses = await this.prismaService.pensumCourse.findMany({
       where: {
@@ -152,13 +162,12 @@ export class StudentSchedulesService {
 
     const scheduleCourseOptions = this.buildScheduleCourseOptions({
       selectedCourseCodes: uniqueCourseCodes,
-      scheduleItems: items,
+      scheduleItems: assignedItems,
       pensumCourses,
       postrequisitesCountByPensumCourseId,
     });
 
     const candidateResults = this.runGeneticAlgorithm(scheduleCourseOptions);
-
     const bestCandidate = candidateResults[0];
 
     if (!bestCandidate) {
@@ -178,21 +187,257 @@ export class StudentSchedulesService {
         this.toScheduleAlternative(candidate, scheduleCourseOptions),
       );
 
+    const persistedSchedules = await this.persistGeneratedSchedules({
+      dto: createStudentScheduleDto,
+      user,
+      generatedSchedule,
+      schedules: [
+        { isBest: true, alternative: bestSchedule },
+        ...alternativeSchedules.map((alternative) => ({
+          isBest: false,
+          alternative,
+        })),
+      ],
+    });
+
     return {
       scheduleId: createStudentScheduleDto.scheduleId,
       studentPensumId: createStudentScheduleDto.studentPensumId,
+      generatedSchedules: persistedSchedules,
       bestSchedule,
       alternativeSchedules,
-      message: 'Horario generado correctamente',
+      message: 'Horario generado y almacenado correctamente',
     };
   }
 
-  findAll() {
-    return `This action returns all studentSchedules`;
+  async findAll(filters: FilterStudentScheduleDto, user: JwtPayload) {
+    const where: Prisma.StudentGeneratedScheduleWhereInput = {
+      active: filters.active ?? true,
+      ...(filters.studentPensumId !== undefined
+        ? { studentPensumId: filters.studentPensumId }
+        : {}),
+      ...(user.role === 'ADMIN' ? {} : { userId: user.sub }),
+    };
+
+    const schedules =
+      await this.prismaService.studentGeneratedSchedule.findMany({
+        where,
+        include: {
+          items: true,
+        },
+        orderBy: [
+          { createdAt: 'desc' },
+          { studentGeneratedScheduleId: 'desc' },
+        ],
+      });
+
+    return schedules.map((schedule) => this.mapStoredSchedule(schedule));
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} studentSchedule`;
+  async findOne(id: number, user: JwtPayload) {
+    const schedule =
+      await this.prismaService.studentGeneratedSchedule.findUnique({
+        where: { studentGeneratedScheduleId: id },
+        include: {
+          items: true,
+        },
+      });
+
+    if (!schedule) {
+      throw new NotFoundException(`El horario generado con id ${id} no existe`);
+    }
+
+    if (user.role !== 'ADMIN' && schedule.userId !== user.sub) {
+      throw new ForbiddenException('No autorizado para consultar este horario');
+    }
+
+    return this.mapStoredSchedule(schedule);
+  }
+
+  private async persistGeneratedSchedules(params: {
+    dto: CreateStudentScheduleDto;
+    user: JwtPayload;
+    generatedSchedule: {
+      generatedScheduleId: string;
+      scheduleConfigId: string;
+      snapshot: {
+        periodDurationM: number;
+        morningStartTime: string;
+        morningEndTime: string;
+        afternoonStartTime: string;
+        afternoonEndTime: string;
+      };
+    };
+    schedules: PersistableScheduleResult[];
+  }) {
+    const { dto, generatedSchedule, schedules, user } = params;
+
+    const morningStartTime = new Date(
+      generatedSchedule.snapshot.morningStartTime,
+    );
+    const morningEndTime = new Date(generatedSchedule.snapshot.morningEndTime);
+    const afternoonStartTime = new Date(
+      generatedSchedule.snapshot.afternoonStartTime,
+    );
+    const afternoonEndTime = new Date(
+      generatedSchedule.snapshot.afternoonEndTime,
+    );
+
+    const createdSchedules = await this.prismaService.$transaction(
+      async (tx) => {
+        await tx.studentGeneratedSchedule.updateMany({
+          where: {
+            studentPensumId: dto.studentPensumId,
+            generatedScheduleId: dto.scheduleId.toString(),
+            active: true,
+          },
+          data: {
+            active: false,
+          },
+        });
+
+        const created = [] as Array<
+          Prisma.StudentGeneratedScheduleGetPayload<{
+            include: { items: true };
+          }>
+        >;
+
+        for (const schedule of schedules) {
+          const scheduleItemsToStore = this.flattenAlternativeItems(
+            schedule.alternative,
+          );
+
+          const createdSchedule = await tx.studentGeneratedSchedule.create({
+            data: {
+              name: dto.name,
+              generatedScheduleId: generatedSchedule.generatedScheduleId,
+              scheduleConfigId: generatedSchedule.scheduleConfigId,
+              userId: user.sub,
+              studentPensumId: dto.studentPensumId,
+              isBest: schedule.isBest,
+              active: true,
+              periodDurationM: generatedSchedule.snapshot.periodDurationM,
+              morningStartTime,
+              morningEndTime,
+              afternoonStartTime,
+              afternoonEndTime,
+              items: {
+                createMany: {
+                  data: scheduleItemsToStore,
+                },
+              },
+            },
+            include: {
+              items: true,
+            },
+          });
+
+          created.push(createdSchedule);
+        }
+
+        return created;
+      },
+    );
+
+    return createdSchedules.map((schedule) => this.mapStoredSchedule(schedule));
+  }
+
+  private flattenAlternativeItems(alternative: StudentScheduleAlternative) {
+    const itemsToStore: Array<{
+      generatedScheduleItemId: string;
+      configCourseId: string;
+      courseCode: number;
+      courseName: string;
+      sectionIndex: number;
+      sessionType: string;
+      dayIndex: number;
+      startSlot: number;
+      periodCount: number;
+      requireClassroom: boolean;
+      classroomName: string | null;
+      professorName: string;
+      isMandatory: boolean;
+    }> = [];
+
+    for (const course of alternative.includedCourses) {
+      for (const item of course.items) {
+        itemsToStore.push({
+          generatedScheduleItemId: item.generatedScheduleItemId,
+          configCourseId: item.configCourseId,
+          courseCode: item.courseCode,
+          courseName: item.courseName,
+          sectionIndex: item.sectionIndex,
+          sessionType: item.sessionType,
+          dayIndex: item.dayIndex,
+          startSlot: item.startSlot,
+          periodCount: item.periodCount,
+          requireClassroom: item.requireClassroom,
+          classroomName: item.classroomName ?? null,
+          professorName: item.professorName,
+          isMandatory: course.isMandatory,
+        });
+      }
+    }
+
+    return itemsToStore;
+  }
+
+  private mapStoredSchedule(schedule: {
+    studentGeneratedScheduleId: number;
+    name: string;
+    generatedScheduleId: string;
+    scheduleConfigId: string;
+    studentPensumId: number;
+    userId: number;
+    isBest: boolean;
+    active: boolean;
+    periodDurationM: number;
+    morningStartTime: Date;
+    morningEndTime: Date;
+    afternoonStartTime: Date;
+    afternoonEndTime: Date;
+    createdAt: Date;
+    items: Array<{
+      studentGeneratedScheduleItemId: number;
+      generatedScheduleItemId: string;
+      configCourseId: string;
+      courseCode: number;
+      courseName: string;
+      sectionIndex: number;
+      sessionType: string;
+      dayIndex: number;
+      startSlot: number;
+      periodCount: number;
+      requireClassroom: boolean;
+      classroomName: string | null;
+      professorName: string;
+      isMandatory: boolean;
+    }>;
+  }): StoredStudentSchedule {
+    return {
+      studentGeneratedScheduleId: schedule.studentGeneratedScheduleId,
+      name: schedule.name,
+      generatedScheduleId: schedule.generatedScheduleId,
+      scheduleConfigId: schedule.scheduleConfigId,
+      studentPensumId: schedule.studentPensumId,
+      userId: schedule.userId,
+      isBest: schedule.isBest,
+      active: schedule.active,
+      periodDurationM: schedule.periodDurationM,
+      morningStartTime: schedule.morningStartTime,
+      morningEndTime: schedule.morningEndTime,
+      afternoonStartTime: schedule.afternoonStartTime,
+      afternoonEndTime: schedule.afternoonEndTime,
+      createdAt: schedule.createdAt,
+      slots: buildSlotCatalog({
+        periodDurationM: schedule.periodDurationM,
+        morningStartTime: schedule.morningStartTime,
+        morningEndTime: schedule.morningEndTime,
+        afternoonStartTime: schedule.afternoonStartTime,
+        afternoonEndTime: schedule.afternoonEndTime,
+      }),
+      items: schedule.items,
+    };
   }
 
   private ensureNoDuplicateCourseCodes(courseCodes: number[]) {
@@ -383,7 +628,6 @@ export class StudentSchedulesService {
 
     for (const groupedItems of groupedByCourseAndSection.values()) {
       const firstItem = groupedItems[0];
-
       if (!firstItem) {
         continue;
       }
@@ -396,7 +640,6 @@ export class StudentSchedulesService {
       const classItems = groupedItems.filter(
         (item) => item.sessionType === 'CLASS',
       );
-
       if (classItems.length === 0) {
         continue;
       }

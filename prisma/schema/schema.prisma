@@ -24,6 +24,7 @@ model User {
   createdAt DateTime @default(now())
   student   Student? @relation(fields: [studentId], references: [studentId])
   studentId Int?     @unique
+  StudentGeneratedSchedule StudentGeneratedSchedule[]
 }
 
 model Role {
@@ -117,6 +118,7 @@ model StudentPensum {
   pensumId        Int
   createdAt       DateTime       @default(now())
   StudentGrade    StudentGrade[]
+  StudentGeneratedSchedule StudentGeneratedSchedule[]
 
   @@unique([studentId, pensumId])
 }
@@ -131,4 +133,43 @@ model StudentGrade {
   gradeType       GradeType
   grade           Int
   createdAt       DateTime      @default(now())
+}
+
+model StudentGeneratedSchedule {
+  studentGeneratedScheduleId Int    @id @default(autoincrement())
+  name                       String @db.VarChar(150)
+  generatedScheduleId        String @db.VarChar(50)
+  scheduleConfigId           String @db.VarChar(50)
+  isBest                     Boolean
+  active                     Boolean   @default(true)
+  periodDurationM            Int
+  morningStartTime           DateTime
+  morningEndTime             DateTime
+  afternoonStartTime         DateTime
+  afternoonEndTime           DateTime
+  createdAt                  DateTime  @default(now())
+  owner                      User      @relation(fields: [userId], references: [id])
+  userId                     Int
+  studentPensum              StudentPensum @relation(fields: [studentPensumId], references: [studentPensumId])
+  studentPensumId            Int
+  items                      StudentGeneratedScheduleItem[]
+}
+
+model StudentGeneratedScheduleItem {
+  studentGeneratedScheduleItemId Int    @id @default(autoincrement())
+  generatedScheduleItemId        String @db.VarChar(50)
+  configCourseId                 String @db.VarChar(50)
+  courseCode                     Int
+  courseName                     String  @db.VarChar(255)
+  sectionIndex                   Int
+  sessionType                    String  @db.VarChar(20)
+  dayIndex                       Int
+  startSlot                      Int
+  periodCount                    Int
+  requireClassroom               Boolean
+  classroomName                  String? @db.VarChar(150)
+  professorName                  String  @db.VarChar(150)
+  isMandatory                    Boolean
+  studentGeneratedSchedule       StudentGeneratedSchedule @relation(fields: [studentGeneratedScheduleId], references: [studentGeneratedScheduleId], onDelete: Cascade)
+  studentGeneratedScheduleId     Int
 }

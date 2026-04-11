@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { StudentSchedulesService } from './student-schedules.service';
 import { CreateStudentScheduleDto } from './dto/create-student-schedule.dto';
+import { FilterStudentScheduleDto } from './dto/filter-student-schedule.dto';
 
 @ApiTags('student-schedules')
 @ApiBearerAuth()
@@ -54,13 +56,19 @@ export class StudentSchedulesController {
     return this.studentSchedulesService.create(createStudentScheduleDto, user);
   }
 
+  @ApiOperation({ summary: 'Listar horarios personales generados' })
+  @UseGuards(JwtAuthGuard)
   @Get()
-  findAll() {
-    return this.studentSchedulesService.findAll();
+  findAll(@Query() filters: FilterStudentScheduleDto, @Req() req: Request) {
+    const user = req['user'] as JwtPayload;
+    return this.studentSchedulesService.findAll(filters, user);
   }
 
+  @ApiOperation({ summary: 'Obtener horario personal generado por id' })
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.studentSchedulesService.findOne(+id);
+  findOne(@Param('id') id: string, @Req() req: Request) {
+    const user = req['user'] as JwtPayload;
+    return this.studentSchedulesService.findOne(+id, user);
   }
 }
