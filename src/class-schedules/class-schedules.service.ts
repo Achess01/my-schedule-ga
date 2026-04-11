@@ -150,14 +150,15 @@ export class ClassSchedulesService {
       courseName: this.readString(item, 'courseName'),
       sectionIndex: this.readNumber(item, 'sectionIndex'),
       sessionType: this.readString(item, 'sessionType'),
-      dayIndex: this.readNumber(item, 'dayIndex'),
-      startSlot: this.readNumber(item, 'startSlot'),
+      dayIndex: this.readNumberNullable(item, 'dayIndex') ?? 0,
+      startSlot: this.readNumberNullable(item, 'startSlot') ?? 0,
       periodCount: this.readNumber(item, 'periodCount'),
       requireClassroom: this.readBoolean(item, 'requireClassroom'),
       configClassroomId: this.readNullableString(item, 'configClassroomId'),
       classroomName: this.readOptionalNullableString(item, 'classroomName'),
-      configProfessorId: this.readString(item, 'configProfessorId'),
-      professorName: this.readString(item, 'professorName'),
+      configProfessorId:
+        this.readNullableString(item, 'configProfessorId') ?? '',
+      professorName: this.readNullableString(item, 'professorName') ?? '',
       assignmentStatus: this.readString(item, 'assignmentStatus'),
       isFixed: this.readBoolean(item, 'isFixed'),
       semester: this.readNumber(item, 'semester'),
@@ -219,6 +220,20 @@ export class ClassSchedulesService {
 
     if (typeof value !== 'number' || Number.isNaN(value)) {
       throw new BadGatewayException('Invalid generated schedules payload');
+    }
+
+    return value;
+  }
+
+  private readNumberNullable(payload: unknown, key: string): number | null {
+    const value = this.readValue(payload, key);
+
+    if (value === null) {
+      return null;
+    }
+
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return null;
     }
 
     return value;

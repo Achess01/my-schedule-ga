@@ -1,10 +1,8 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
-  Patch,
   Post,
   Req,
   UseGuards,
@@ -25,7 +23,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { StudentSchedulesService } from './student-schedules.service';
 import { CreateStudentScheduleDto } from './dto/create-student-schedule.dto';
-import { UpdateStudentScheduleDto } from './dto/update-student-schedule.dto';
 
 @ApiTags('student-schedules')
 @ApiBearerAuth()
@@ -65,18 +62,5 @@ export class StudentSchedulesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.studentSchedulesService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateStudentScheduleDto: UpdateStudentScheduleDto,
-  ) {
-    return this.studentSchedulesService.update(+id, updateStudentScheduleDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.studentSchedulesService.remove(+id);
   }
 }
