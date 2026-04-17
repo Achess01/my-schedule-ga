@@ -7,11 +7,7 @@ export type DayIndex =
   | typeof LAB1_DAY_INDEX
   | typeof LAB2_DAY_INDEX;
 
-export const DAY_INDEXES: readonly DayIndex[] = [
-  CLASS_DAY_INDEX,
-  LAB1_DAY_INDEX,
-  LAB2_DAY_INDEX,
-] as const;
+export const DAY_INDEXES: readonly DayIndex[] = [CLASS_DAY_INDEX] as const;
 
 export interface Slot {
   dayIndex: DayIndex;

@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -114,6 +116,120 @@ export class StudentPensumService {
     return this.prismaService.studentPensum.delete({
       where: { studentPensumId: id },
     });
+  }
+
+  async findAssignableCourses(
+    studentId: number,
+    pensumId: number,
+    user: JwtPayload,
+  ) {
+    if (user.role === 'STUDENT') {
+      if (!user.studentId) {
+        throw new UnauthorizedException(
+          'Usuario STUDENT sin studentId en token',
+        );
+      }
+
+      if (studentId !== user.studentId) {
+        throw new ForbiddenException(
+          'No autorizado para consultar cursos asignables de otro estudiante',
+        );
+      }
+    }
+
+    if (!studentId) {
+      throw new BadRequestException('Debe enviar un studentId valido');
+    }
+
+    await this.ensureStudentExists(studentId);
+    await this.ensurePensumExists(pensumId);
+
+    const studentPensum = await this.prismaService.studentPensum.findUnique({
+      where: {
+        studentId_pensumId: {
+          studentId,
+          pensumId,
+        },
+      },
+      include: {
+        student: true,
+        pensum: true,
+      },
+    });
+
+    if (!studentPensum) {
+      throw new NotFoundException(
+        'El estudiante no está registrado en el pensum indicado',
+      );
+    }
+
+    const approvedGrades = await this.prismaService.studentGrade.findMany({
+      where: {
+        studentPensumId: studentPensum.studentPensumId,
+        isApproved: true,
+      },
+      include: {
+        pensumCourse: {
+          select: {
+            pensumCourseId: true,
+            credits: true,
+          },
+        },
+      },
+    });
+
+    const approvedPensumCourseIds = new Set<number>();
+    const approvedCreditsByPensumCourseId = new Map<number, number>();
+
+    for (const grade of approvedGrades) {
+      approvedPensumCourseIds.add(grade.pensumCourse.pensumCourseId);
+      approvedCreditsByPensumCourseId.set(
+        grade.pensumCourse.pensumCourseId,
+        grade.pensumCourse.credits,
+      );
+    }
+
+    const approvedCredits = Array.from(
+      approvedCreditsByPensumCourseId.values(),
+    ).reduce((sum, credits) => sum + credits, 0);
+
+    const pensumCourses = await this.prismaService.pensumCourse.findMany({
+      where: { pensumId },
+      include: {
+        course: true,
+        studyArea: true,
+        prerequisites: {
+          select: {
+            prerequisiteId: true,
+          },
+        },
+      },
+    });
+
+    const assignableCourses = pensumCourses.filter((pensumCourse) => {
+      if (approvedPensumCourseIds.has(pensumCourse.pensumCourseId)) {
+        return false;
+      }
+
+      const hasAllPrerequisites = pensumCourse.prerequisites.every(
+        (prerequisite) =>
+          approvedPensumCourseIds.has(prerequisite.prerequisiteId),
+      );
+
+      if (!hasAllPrerequisites) {
+        return false;
+      }
+
+      return approvedCredits >= pensumCourse.requiredCreds;
+    });
+
+    return {
+      studentPensumId: studentPensum.studentPensumId,
+      studentId: studentPensum.studentId,
+      pensumId: studentPensum.pensumId,
+      approvedCredits,
+      assignableCourses,
+    };
   }
 
   private async ensureExists(id: number) {

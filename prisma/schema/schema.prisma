@@ -24,7 +24,8 @@ model User {
   createdAt DateTime @default(now())
   student   Student? @relation(fields: [studentId], references: [studentId])
   studentId Int?     @unique
-  StudentGeneratedSchedule StudentGeneratedSchedule[]
+  StudentGeneratedSchedule       StudentGeneratedSchedule[]
+  StudentGeneratedScheduleHeader StudentGeneratedScheduleHeader[]
 }
 
 model Role {
@@ -118,7 +119,8 @@ model StudentPensum {
   pensumId        Int
   createdAt       DateTime       @default(now())
   StudentGrade    StudentGrade[]
-  StudentGeneratedSchedule StudentGeneratedSchedule[]
+  StudentGeneratedSchedule       StudentGeneratedSchedule[]
+  StudentGeneratedScheduleHeader StudentGeneratedScheduleHeader[]
 
   @@unique([studentId, pensumId])
 }
@@ -135,10 +137,20 @@ model StudentGrade {
   createdAt       DateTime      @default(now())
 }
 
+model StudentGeneratedScheduleHeader {
+  studentGeneratedScheduleHeaderId Int      @id @default(autoincrement())
+  name                             String   @db.VarChar(150)
+  generatedScheduleId              String   @db.VarChar(50)
+  createdAt                        DateTime @default(now())
+  studentPensum                    StudentPensum @relation(fields: [studentPensumId], references: [studentPensumId])
+  studentPensumId                  Int
+  owner                            User     @relation(fields: [userId], references: [id])
+  userId                           Int
+  schedules                        StudentGeneratedSchedule[]
+}
+
 model StudentGeneratedSchedule {
   studentGeneratedScheduleId Int    @id @default(autoincrement())
-  name                       String @db.VarChar(150)
-  generatedScheduleId        String @db.VarChar(50)
   scheduleConfigId           String @db.VarChar(50)
   isBest                     Boolean
   active                     Boolean   @default(true)
@@ -150,6 +162,8 @@ model StudentGeneratedSchedule {
   createdAt                  DateTime  @default(now())
   owner                      User      @relation(fields: [userId], references: [id])
   userId                     Int
+  header                     StudentGeneratedScheduleHeader @relation(fields: [studentGeneratedScheduleHeaderId], references: [studentGeneratedScheduleHeaderId])
+  studentGeneratedScheduleHeaderId Int
   studentPensum              StudentPensum @relation(fields: [studentPensumId], references: [studentPensumId])
   studentPensumId            Int
   items                      StudentGeneratedScheduleItem[]

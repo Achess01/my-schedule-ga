@@ -47,8 +47,7 @@ export interface StoredStudentScheduleItem {
 
 export interface StoredStudentSchedule {
   studentGeneratedScheduleId: number;
-  name: string;
-  generatedScheduleId: string;
+  studentGeneratedScheduleHeaderId: number;
   scheduleConfigId: string;
   studentPensumId: number;
   userId: number;
@@ -64,9 +63,23 @@ export interface StoredStudentSchedule {
   items: StoredStudentScheduleItem[];
 }
 
+export interface StoredStudentScheduleHeader {
+  studentGeneratedScheduleHeaderId: number;
+  name: string;
+  generatedScheduleId: string;
+  studentPensumId: number;
+  userId: number;
+  createdAt: Date;
+}
+
+export interface StoredStudentScheduleHeaderDetail extends StoredStudentScheduleHeader {
+  schedules: StoredStudentSchedule[];
+}
+
 export interface StudentScheduleCreateResponse {
   scheduleId: number;
   studentPensumId: number;
+  header: StoredStudentScheduleHeader;
   generatedSchedules: StoredStudentSchedule[];
   bestSchedule: StudentScheduleAlternative;
   alternativeSchedules: StudentScheduleAlternative[];

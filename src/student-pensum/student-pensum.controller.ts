@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -27,6 +28,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { StudentPensumService } from './student-pensum.service';
 import { CreateStudentPensumDto } from './dto/create-student-pensum.dto';
 import { FilterStudentPensumDto } from './dto/filter-student-pensum.dto';
+import { FindAssignableCoursesDto } from './dto/find-assignable-courses.dto';
 
 @ApiTags('student-pensum')
 @ApiBearerAuth()
@@ -83,6 +85,38 @@ export class StudentPensumController {
         studentId: filter.studentId,
         pensumId: filter.pensumId,
       },
+      user,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Listar cursos asignables de un estudiante por pensum',
+  })
+  @ApiOkResponse({ description: 'Cursos asignables obtenidos' })
+  @ApiNotFoundResponse({
+    description:
+      'Estudiante, pensum o registro estudiante-pensum no encontrados',
+  })
+  @ApiForbiddenResponse({
+    description: 'No autorizado para consultar cursos asignables',
+  })
+  @UseGuards(JwtAuthGuard)
+  @Get('assignable-courses')
+  findAssignableCourses(
+    @Query() query: FindAssignableCoursesDto,
+    @Req() req: Request,
+  ) {
+    const user = req['user'] as JwtPayload;
+
+    const resolvedStudentId = user.studentId ?? query.studentId;
+
+    if (!resolvedStudentId) {
+      throw new BadRequestException('Debe enviar studentId en query o token');
+    }
+
+    return this.studentPensumService.findAssignableCourses(
+      resolvedStudentId,
+      query.pensumId,
       user,
     );
   }

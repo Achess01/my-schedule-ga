@@ -15,6 +15,8 @@ import { CreateStudentScheduleDto } from './dto/create-student-schedule.dto';
 import { FilterStudentScheduleDto } from './dto/filter-student-schedule.dto';
 import type {
   StoredStudentSchedule,
+  StoredStudentScheduleHeader,
+  StoredStudentScheduleHeaderDetail,
   StudentScheduleAlternative,
   StudentScheduleCourseSelection,
   StudentScheduleCreateResponse,
@@ -187,7 +189,7 @@ export class StudentSchedulesService {
         this.toScheduleAlternative(candidate, scheduleCourseOptions),
       );
 
-    const persistedSchedules = await this.persistGeneratedSchedules({
+    const persistedResult = await this.persistGeneratedSchedules({
       dto: createStudentScheduleDto,
       user,
       generatedSchedule,
@@ -203,7 +205,8 @@ export class StudentSchedulesService {
     return {
       scheduleId: createStudentScheduleDto.scheduleId,
       studentPensumId: createStudentScheduleDto.studentPensumId,
-      generatedSchedules: persistedSchedules,
+      header: persistedResult.header,
+      generatedSchedules: persistedResult.schedules,
       bestSchedule,
       alternativeSchedules,
       message: 'Horario generado y almacenado correctamente',
@@ -211,47 +214,70 @@ export class StudentSchedulesService {
   }
 
   async findAll(filters: FilterStudentScheduleDto, user: JwtPayload) {
-    const where: Prisma.StudentGeneratedScheduleWhereInput = {
-      active: filters.active ?? true,
+    const where: Prisma.StudentGeneratedScheduleHeaderWhereInput = {
       ...(filters.studentPensumId !== undefined
         ? { studentPensumId: filters.studentPensumId }
         : {}),
       ...(user.role === 'ADMIN' ? {} : { userId: user.sub }),
+      ...(filters.active ?? true
+        ? {
+            schedules: {
+              some: {
+                active: true,
+              },
+            },
+          }
+        : {}),
     };
 
-    const schedules =
-      await this.prismaService.studentGeneratedSchedule.findMany({
-        where,
-        include: {
-          items: true,
-        },
-        orderBy: [
-          { createdAt: 'desc' },
-          { studentGeneratedScheduleId: 'desc' },
-        ],
-      });
+    const headers = await this.prismaService.studentGeneratedScheduleHeader.findMany({
+      where,
+      orderBy: [
+        { createdAt: 'desc' },
+        { studentGeneratedScheduleHeaderId: 'desc' },
+      ],
+    });
 
-    return schedules.map((schedule) => this.mapStoredSchedule(schedule));
+    return headers.map((header) => this.mapStoredHeader(header));
   }
 
   async findOne(id: number, user: JwtPayload) {
-    const schedule =
-      await this.prismaService.studentGeneratedSchedule.findUnique({
-        where: { studentGeneratedScheduleId: id },
-        include: {
-          items: true,
+    const header = await this.prismaService.studentGeneratedScheduleHeader.findUnique({
+      where: { studentGeneratedScheduleHeaderId: id },
+      include: {
+        schedules: {
+          include: {
+            items: true,
+          },
+          orderBy: [
+            { isBest: 'desc' },
+            { createdAt: 'asc' },
+            { studentGeneratedScheduleId: 'asc' },
+          ],
         },
-      });
+      },
+    });
 
-    if (!schedule) {
-      throw new NotFoundException(`El horario generado con id ${id} no existe`);
+    if (!header) {
+      throw new NotFoundException(
+        `El grupo de horarios generado con id ${id} no existe`,
+      );
     }
 
-    if (user.role !== 'ADMIN' && schedule.userId !== user.sub) {
-      throw new ForbiddenException('No autorizado para consultar este horario');
+    if (user.role !== 'ADMIN' && header.userId !== user.sub) {
+      throw new ForbiddenException(
+        'No autorizado para consultar este grupo de horarios',
+      );
     }
 
-    return this.mapStoredSchedule(schedule);
+    const schedules = header.schedules
+      .filter((schedule) => schedule.active)
+      .map((schedule) => this.mapStoredSchedule(schedule));
+
+    return {
+      ...this.mapStoredHeader(header),
+      schedules,
+    } satisfies StoredStudentScheduleHeaderDetail;
   }
 
   private async persistGeneratedSchedules(params: {
@@ -283,63 +309,67 @@ export class StudentSchedulesService {
       generatedSchedule.snapshot.afternoonEndTime,
     );
 
-    const createdSchedules = await this.prismaService.$transaction(
-      async (tx) => {
-        await tx.studentGeneratedSchedule.updateMany({
-          where: {
-            studentPensumId: dto.studentPensumId,
-            generatedScheduleId: dto.scheduleId.toString(),
-            active: true,
-          },
+    const createdResult = await this.prismaService.$transaction(async (tx) => {
+      const header = await tx.studentGeneratedScheduleHeader.create({
+        data: {
+          name: dto.name,
+          generatedScheduleId: generatedSchedule.generatedScheduleId,
+          studentPensumId: dto.studentPensumId,
+          userId: user.sub,
+        },
+      });
+
+      const created = [] as Array<
+        Prisma.StudentGeneratedScheduleGetPayload<{
+          include: { items: true };
+        }>
+      >;
+
+      for (const schedule of schedules) {
+        const scheduleItemsToStore = this.flattenAlternativeItems(
+          schedule.alternative,
+        );
+
+        const createdSchedule = await tx.studentGeneratedSchedule.create({
           data: {
-            active: false,
+            studentGeneratedScheduleHeaderId:
+              header.studentGeneratedScheduleHeaderId,
+            scheduleConfigId: generatedSchedule.scheduleConfigId,
+            userId: user.sub,
+            studentPensumId: dto.studentPensumId,
+            isBest: schedule.isBest,
+            active: true,
+            periodDurationM: generatedSchedule.snapshot.periodDurationM,
+            morningStartTime,
+            morningEndTime,
+            afternoonStartTime,
+            afternoonEndTime,
+            items: {
+              createMany: {
+                data: scheduleItemsToStore,
+              },
+            },
+          },
+          include: {
+            items: true,
           },
         });
 
-        const created = [] as Array<
-          Prisma.StudentGeneratedScheduleGetPayload<{
-            include: { items: true };
-          }>
-        >;
+        created.push(createdSchedule);
+      }
 
-        for (const schedule of schedules) {
-          const scheduleItemsToStore = this.flattenAlternativeItems(
-            schedule.alternative,
-          );
+      return {
+        header,
+        schedules: created,
+      };
+    });
 
-          const createdSchedule = await tx.studentGeneratedSchedule.create({
-            data: {
-              name: dto.name,
-              generatedScheduleId: generatedSchedule.generatedScheduleId,
-              scheduleConfigId: generatedSchedule.scheduleConfigId,
-              userId: user.sub,
-              studentPensumId: dto.studentPensumId,
-              isBest: schedule.isBest,
-              active: true,
-              periodDurationM: generatedSchedule.snapshot.periodDurationM,
-              morningStartTime,
-              morningEndTime,
-              afternoonStartTime,
-              afternoonEndTime,
-              items: {
-                createMany: {
-                  data: scheduleItemsToStore,
-                },
-              },
-            },
-            include: {
-              items: true,
-            },
-          });
-
-          created.push(createdSchedule);
-        }
-
-        return created;
-      },
-    );
-
-    return createdSchedules.map((schedule) => this.mapStoredSchedule(schedule));
+    return {
+      header: this.mapStoredHeader(createdResult.header),
+      schedules: createdResult.schedules.map((schedule) =>
+        this.mapStoredSchedule(schedule),
+      ),
+    };
   }
 
   private flattenAlternativeItems(alternative: StudentScheduleAlternative) {
@@ -382,10 +412,27 @@ export class StudentSchedulesService {
     return itemsToStore;
   }
 
-  private mapStoredSchedule(schedule: {
-    studentGeneratedScheduleId: number;
+  private mapStoredHeader(header: {
+    studentGeneratedScheduleHeaderId: number;
     name: string;
     generatedScheduleId: string;
+    studentPensumId: number;
+    userId: number;
+    createdAt: Date;
+  }): StoredStudentScheduleHeader {
+    return {
+      studentGeneratedScheduleHeaderId: header.studentGeneratedScheduleHeaderId,
+      name: header.name,
+      generatedScheduleId: header.generatedScheduleId,
+      studentPensumId: header.studentPensumId,
+      userId: header.userId,
+      createdAt: header.createdAt,
+    };
+  }
+
+  private mapStoredSchedule(schedule: {
+    studentGeneratedScheduleId: number;
+    studentGeneratedScheduleHeaderId: number;
     scheduleConfigId: string;
     studentPensumId: number;
     userId: number;
@@ -416,8 +463,8 @@ export class StudentSchedulesService {
   }): StoredStudentSchedule {
     return {
       studentGeneratedScheduleId: schedule.studentGeneratedScheduleId,
-      name: schedule.name,
-      generatedScheduleId: schedule.generatedScheduleId,
+      studentGeneratedScheduleHeaderId:
+        schedule.studentGeneratedScheduleHeaderId,
       scheduleConfigId: schedule.scheduleConfigId,
       studentPensumId: schedule.studentPensumId,
       userId: schedule.userId,
@@ -628,6 +675,7 @@ export class StudentSchedulesService {
 
     for (const groupedItems of groupedByCourseAndSection.values()) {
       const firstItem = groupedItems[0];
+
       if (!firstItem) {
         continue;
       }
@@ -640,6 +688,7 @@ export class StudentSchedulesService {
       const classItems = groupedItems.filter(
         (item) => item.sessionType === 'CLASS',
       );
+
       if (classItems.length === 0) {
         continue;
       }
