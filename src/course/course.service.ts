@@ -97,7 +97,7 @@ export class CourseService {
     const course = await this.checkIfExists(id);
 
     if (course.name !== updateCourseDto.name) {
-      const withSameName = await this.prismaService.course.findUnique({
+      const withSameName = await this.prismaService.course.findFirst({
         where: { name: updateCourseDto.name },
       });
 
