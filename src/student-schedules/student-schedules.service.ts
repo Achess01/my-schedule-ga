@@ -219,7 +219,7 @@ export class StudentSchedulesService {
         ? { studentPensumId: filters.studentPensumId }
         : {}),
       ...(user.role === 'ADMIN' ? {} : { userId: user.sub }),
-      ...(filters.active ?? true
+      ...((filters.active ?? true)
         ? {
             schedules: {
               some: {
@@ -230,33 +230,40 @@ export class StudentSchedulesService {
         : {}),
     };
 
-    const headers = await this.prismaService.studentGeneratedScheduleHeader.findMany({
+    return this.prismaService.studentGeneratedScheduleHeader.findMany({
       where,
+      include: {
+        studentPensum: {
+          include: { pensum: true },
+        },
+      },
       orderBy: [
         { createdAt: 'desc' },
         { studentGeneratedScheduleHeaderId: 'desc' },
       ],
     });
-
-    return headers.map((header) => this.mapStoredHeader(header));
   }
 
   async findOne(id: number, user: JwtPayload) {
-    const header = await this.prismaService.studentGeneratedScheduleHeader.findUnique({
-      where: { studentGeneratedScheduleHeaderId: id },
-      include: {
-        schedules: {
-          include: {
-            items: true,
+    const header =
+      await this.prismaService.studentGeneratedScheduleHeader.findUnique({
+        where: { studentGeneratedScheduleHeaderId: id },
+        include: {
+          studentPensum: {
+            include: { pensum: true },
           },
-          orderBy: [
-            { isBest: 'desc' },
-            { createdAt: 'asc' },
-            { studentGeneratedScheduleId: 'asc' },
-          ],
+          schedules: {
+            include: {
+              items: true,
+            },
+            orderBy: [
+              { isBest: 'desc' },
+              { createdAt: 'asc' },
+              { studentGeneratedScheduleId: 'asc' },
+            ],
+          },
         },
-      },
-    });
+      });
 
     if (!header) {
       throw new NotFoundException(
