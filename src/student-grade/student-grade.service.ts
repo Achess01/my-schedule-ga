@@ -107,7 +107,11 @@ export class StudentGradeService {
             pensum: true,
           },
         },
-        pensumCourse: true,
+        pensumCourse: {
+          include: {
+            course: true,
+          },
+        },
       },
     });
   }
