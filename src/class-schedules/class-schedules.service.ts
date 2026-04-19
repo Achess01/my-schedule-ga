@@ -1,5 +1,7 @@
 import { BadGatewayException, Injectable } from '@nestjs/common';
 import { SCHEDULE_CLASS_URL } from '../constants';
+import { EmailService } from '../email/email.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type {
   GeneratedScheduleDetail,
   GeneratedScheduleItem,
@@ -10,6 +12,11 @@ import type {
 
 @Injectable()
 export class ClassSchedulesService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
+
   async findAll(): Promise<GeneratedScheduleSummary[]> {
     const payload = await this.fetchGeneratedSchedules(
       `${SCHEDULE_CLASS_URL}/generated-schedules`,
@@ -24,6 +31,39 @@ export class ClassSchedulesService {
     );
 
     return this.mapFindOneResponse(payload);
+  }
+
+  async notifyChange(generatedScheduleId: string): Promise<{ sent: boolean }> {
+    const headers = await this.prisma.studentGeneratedScheduleHeader.findMany({
+      where: { generatedScheduleId },
+      include: {
+        owner: { select: { email: true } },
+      },
+    });
+
+    if (headers.length === 0) {
+      return { sent: false };
+    }
+
+    const recipients = Array.from(
+      new Set(
+        headers
+          .map((header) => header.owner.email)
+          .filter((email) => email.length > 0),
+      ),
+    );
+
+    if (recipients.length === 0) {
+      return { sent: false };
+    }
+
+    await this.emailService.sendEmail({
+      recipients,
+      subject: 'Horario actualizado',
+      text: `El horario con id ${generatedScheduleId} ha sido actualizado. Ingresa a la plataforma y genera un nuevo horario.`,
+    });
+
+    return { sent: true };
   }
 
   private async fetchGeneratedSchedules(url: string): Promise<unknown> {

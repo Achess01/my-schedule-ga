@@ -15,6 +15,7 @@ import { StudentPensumModule } from './student-pensum/student-pensum.module';
 import { StudentGradeModule } from './student-grade/student-grade.module';
 import { ClassSchedulesModule } from './class-schedules/class-schedules.module';
 import { StudentSchedulesModule } from './student-schedules/student-schedules.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { StudentSchedulesModule } from './student-schedules/student-schedules.mo
     StudentGradeModule,
     ClassSchedulesModule,
     StudentSchedulesModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
